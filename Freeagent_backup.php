@@ -28,7 +28,7 @@
  *
  * } catch(Exception $e) {
  *
- *		echo 'Error: ',  $e->getMessage();
+ *		echo 'Error: '.  $e->getMessage();
  *
  * }
  *
@@ -74,11 +74,15 @@ class Freeagent_backup {
 		$this->ch = curl_init();
 		curl_setopt($this->ch, CURLOPT_HEADER, FALSE);
 		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, TRUE);
-		curl_setopt($this->ch,CURLOPT_USERAGENT,$_SERVER['HTTP_USER_AGENT']);
 		curl_setopt($this->ch, CURLOPT_CONNECTTIMEOUT, 30);
 		curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER, FALSE);
 		curl_setopt($this->ch, CURLOPT_COOKIESESSION, FALSE);
 		curl_setopt($this->ch, CURLOPT_COOKIEJAR, $this->jar);
+
+		// not available when running from command line
+		if(isset($_SERVER['HTTP_USER_AGENT'])) {
+			curl_setopt($this->ch,CURLOPT_USERAGENT,$_SERVER['HTTP_USER_AGENT']);
+		}
 	}
 
 	// -----------------------------------------------------------------
@@ -103,7 +107,7 @@ class Freeagent_backup {
 	 * @param string $filename : filename to save to
 	 * @param type $folder :  folder to save to
 	 * @param type $zip_and_date : if TRUE will zip up and increment by date
-	 * @return boolean
+	 * @return mixed : zip filename if one created or void
 	 */
 	public function download_backup($filename,$folder,$zip_and_date = TRUE) {
 
@@ -150,7 +154,9 @@ class Freeagent_backup {
 	/**
 	 * submit_login_form
 	 *
-	 * @return boolean
+	 * Perform a POST submit in order to authenticate and set
+	 * session cookie
+	 *
 	 */
 	private function submit_login_form() {
 
@@ -179,9 +185,9 @@ class Freeagent_backup {
 	/**
 	 * get_login_token
 	 *
-	 * Parse the login form for a token and return it, or false
+	 * Parse the login form for a token and return it
 	 *
-	 * @return mixed
+	 * @return string
 	 */
 	private function get_login_token() {
 
