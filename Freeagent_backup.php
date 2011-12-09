@@ -16,11 +16,11 @@
  * require_once('Freeagent_backup.php');
  *
  * $FA = new Freeagent(
- *					$fa_url,
- *					$fa_username,
- *					$fa_password,
- *					$fa_cookiefolder
- *					);
+ * 					$fa_url,
+ * 					$fa_username,
+ * 					$fa_password,
+ * 					$fa_cookiefolder
+ * 					);
  *
  * try {
  *
@@ -28,7 +28,7 @@
  *
  * } catch(Exception $e) {
  *
- *		echo 'Error: '.  $e->getMessage();
+ * 		echo 'Error: '.  $e->getMessage();
  *
  * }
  *
@@ -40,164 +40,162 @@
  */
 class Freeagent_backup {
 
-	private $ch;
+    private $ch;
+    private $jar;
+    private $url;
+    private $username;
+    private $password;
+    private $settings = array(
+        'url' => 'https://YOURDOMAIN.freeagent.com/',
+        'username' => 'user@example.com',
+        'password' => 'your-password',
+        'cookiefolder' => './cookies/',
+        'notify_email' => 'user@example.com',
+        'nofity_on_success' => FALSE,
+        'nofity_on_failure' => TRUE,
+        'download_filename' => 'freeagent_backup.xls',
+        'download_folder' => './downloads/',
+        'zip_and_increment_backup' => TRUE
+    );
 
-	private $jar;
+    // -----------------------------------------------------------------
 
-	private $url;
+    /**
+     * constructor
+     *
+     * @param array $settings any or all of the settings above
+     */
+    function __construct($settings = array()) {
 
-	private $username;
+        // pass on variables
+        $this->settings = array_merge($this->settings, $settings);
 
-	private $password;
+        // make a cookie file
+        $this->jar = tempnam($this->settings['cookiefolder'], "CURLCOOKIE");
 
-	// -----------------------------------------------------------------
+        // get cURL ready
+        $this->ch = curl_init();
+        curl_setopt($this->ch, CURLOPT_HEADER, FALSE);
+        curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, TRUE);
+        curl_setopt($this->ch, CURLOPT_CONNECTTIMEOUT, 30);
+        curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+        curl_setopt($this->ch, CURLOPT_COOKIESESSION, FALSE);
+        curl_setopt($this->ch, CURLOPT_COOKIEJAR, $this->jar);
 
-	/**
-	 * constructor
-	 *
-	 * @param string $url : e.g. 'https://YOURCOMPANY.freeagent.com/'
-	 * @param string $username : your account login name/email
-	 * @param string $password : your account password
-	 * @param string $cookiefolder : path to directory to store cookies
-	 */
-	function __construct($url,$username,$password,$cookiefolder) {
+        // not available when running from command line
+        if (isset($_SERVER['HTTP_USER_AGENT'])) {
+            curl_setopt($this->ch, CURLOPT_USERAGENT, $_SERVER['HTTP_USER_AGENT']);
+        }
+    }
 
-		// pass on variables
-		$this->url = $url;
-		$this->username = $username;
-		$this->password = $password;
+    // -----------------------------------------------------------------
 
-		// make a cookie file
-		$this->jar = tempnam($cookiefolder, "CURLCOOKIE");
+    /**
+     * destructor
+     *
+     * removes cookie files from recent session
+     *
+     */
+    function __destruct() {
+        unlink($this->jar);
+    }
 
-		// get cURL ready
-		$this->ch = curl_init();
-		curl_setopt($this->ch, CURLOPT_HEADER, FALSE);
-		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, TRUE);
-		curl_setopt($this->ch, CURLOPT_CONNECTTIMEOUT, 30);
-		curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-		curl_setopt($this->ch, CURLOPT_COOKIESESSION, FALSE);
-		curl_setopt($this->ch, CURLOPT_COOKIEJAR, $this->jar);
+    // -----------------------------------------------------------------
 
-		// not available when running from command line
-		if(isset($_SERVER['HTTP_USER_AGENT'])) {
-			curl_setopt($this->ch,CURLOPT_USERAGENT,$_SERVER['HTTP_USER_AGENT']);
-		}
-	}
+    /**
+     * download_backup
+     *
+     * Perform the download
+     *
+     */
+    public function download_backup() {
 
-	// -----------------------------------------------------------------
+        $this->submit_login_form();
 
-	/**
-	 * destructor
-	 *
-	 * removes cookie files from recent session
-	 *
-	 */
-	function __destruct() {
-		unlink($this->jar);
-	}
+        curl_setopt($this->ch, CURLOPT_POST, FALSE);
+        curl_setopt($this->ch, CURLOPT_URL, $this->settings['url'] . 'company/export.xls');
 
-	// -----------------------------------------------------------------
+        $file_contents = curl_exec($this->ch);
 
-	/**
-	 * download_backup
-	 *
-	 * Perform the download
-	 *
-	 * @param string $filename : filename to save to
-	 * @param type $folder :  folder to save to
-	 * @param type $zip_and_date : if TRUE will zip up and increment by date
-	 * @return mixed : zip filename if one created or void
-	 */
-	public function download_backup($filename,$folder,$zip_and_date = TRUE) {
+        if (FALSE === $file_contents) {
+            throw new Exception('Could not download backup file');
+        }
 
-		$this->submit_login_form();
+        // zip and increment
+        if ($this->settings['zip_and_increment_backup']) {
 
-		curl_setopt($this->ch, CURLOPT_POST, FALSE);
-		curl_setopt($this->ch, CURLOPT_URL, $this->url.'company/export.xls' );
+            $zip = new ZipArchive();
 
-		$file_contents = curl_exec($this->ch);
+            $zfilename = $this->settings['download_filename'] . ' - ' . date('Y-m-d H-i-s') . '.zip';
 
-		if(FALSE === $file_contents) {
-			throw new Exception('Could not download backup file');
-		}
+            if ($zip->open($this->settings['download_folder'] . $zfilename, ZIPARCHIVE::CREATE) !== TRUE) {
+                throw new Exception('Cannot create ZIP file');
+            }
 
-		// zip and increment
-		if($zip_and_date) {
+            $zip->addFromString($this->settings['download_filename'], $file_contents);
 
-			$zip = new ZipArchive();
+            $zip->close();
 
-			$zfilename = $filename.' - '.date('Y-m-d H-i-s').'.zip';
+            return $zfilename;
 
-			if ($zip->open($folder.$zfilename, ZIPARCHIVE::CREATE)!==TRUE) {
-				throw new Exception('Cannot create ZIP file');
-			}
+            // or save the file
+        } else {
 
-			$zip->addFromString($filename, $file_contents);
+            $fso = fopen($this->settings['download_folder'] . $this->settings['download_filename'], 'w+');
+            fwrite($fso, $file_contents);
+            fclose($fso);
+        }
+    }
 
-			$zip->close();
+    // -----------------------------------------------------------------
 
-			return $zfilename;
+    /**
+     * submit_login_form
+     *
+     * Perform a POST submit in order to authenticate and set
+     * session cookie
+     *
+     */
+    private function submit_login_form() {
 
-		// or save the file
-		} else {
+        $token = $this->get_login_token();
 
-			$fso = fopen($folder.$filename,'w+');
-			fwrite($fso,$file_contents);
-			fclose($fso);
-		}
+        $pdata = 'authenticity_token=' . $token . '&email=' . $this->settings['username'] . '&password=' . $this->settings['password'];
 
-	}
+        curl_setopt($this->ch, CURLOPT_COOKIEFILE, $this->jar);
+        curl_setopt($this->ch, CURLOPT_POST, TRUE);
+        curl_setopt($this->ch, CURLOPT_URL, $this->settings['url'] . 'sessions');
+        curl_setopt($this->ch, CURLOPT_POSTFIELDS, $pdata);
 
-	// -----------------------------------------------------------------
+        curl_exec($this->ch);
 
-	/**
-	 * submit_login_form
-	 *
-	 * Perform a POST submit in order to authenticate and set
-	 * session cookie
-	 *
-	 */
-	private function submit_login_form() {
+        $result = curl_getinfo($this->ch);
 
-		$token = $this->get_login_token();
+        // we're looking for a redirect to indicate success
+        if ($result['http_code'] != 302) {
+            throw new Exception('Login failed');
+        }
+    }
 
-		$pdata = 'authenticity_token='.$token.'&email='.$this->username.'&password='.$this->password;
+    // -----------------------------------------------------------------
 
-		curl_setopt ($this->ch, CURLOPT_COOKIEFILE, $this->jar);
-		curl_setopt($this->ch, CURLOPT_POST, TRUE);
-		curl_setopt($this->ch, CURLOPT_URL, $this->url.'sessions' );
-		curl_setopt($this->ch, CURLOPT_POSTFIELDS, $pdata);
+    /**
+     * get_login_token
+     *
+     * Parse the login form for a token and return it
+     *
+     * @return string
+     */
+    private function get_login_token() {
 
-		curl_exec($this->ch);
+        curl_setopt($this->ch, CURLOPT_URL, $this->settings['url'] . 'login');
+        $form = curl_exec($this->ch);
 
-		$result = curl_getinfo($this->ch);
+        if (!preg_match('/name="authenticity_token" type="hidden" value="([^"]+)/', $form, $match)) {
+            throw new Exception('Could not get login token');
+        }
 
-		// we're looking for a redirect to indicate success
-		if($result['http_code'] != 302) {
-			throw new Exception('Login failed');
-		}
+        return $match[1];
+    }
 
-	}
-
-	// -----------------------------------------------------------------
-
-	/**
-	 * get_login_token
-	 *
-	 * Parse the login form for a token and return it
-	 *
-	 * @return string
-	 */
-	private function get_login_token() {
-
-		curl_setopt($this->ch, CURLOPT_URL, $this->url.'login' );
-		$form = curl_exec($this->ch);
-
-		if(!preg_match('/name="authenticity_token" type="hidden" value="([^"]+)/', $form, $match)) {
-			throw new Exception('Could not get login token');
-		}
-
-		return $match[1];
-	}
 }
