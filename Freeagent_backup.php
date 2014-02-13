@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Freeagent_backup
  *
@@ -36,7 +35,6 @@
  *		echo 'Error: '.  $e->getMessage();
  *	}
  *
-  **
  * Be sure to add trailing slashes to all folder paths
  */
 class Freeagent_backup {
@@ -46,13 +44,13 @@ class Freeagent_backup {
 	private $jar;
 
 	private $settings = array(
-		'url' => 'https://YOURDOMAIN.freeagent.com/',
-		'username' => 'user@example.com',
-		'password' => 'your-password',
-		'notify_email' => 'user@example.com',
-		'notify_on_success' => FALSE,
-		'notify_on_failure' => TRUE,
-	);
+          'url' => 'https://YOURDOMAIN.freeagent.com/',
+          'username' => 'user@example.com',
+          'password' => 'your-password',
+          'notify_email' => 'user@example.com',
+          'notify_on_success' => FALSE,
+          'notify_on_failure' => TRUE,
+    );
 
 	// -----------------------------------------------------------------
 
@@ -118,12 +116,12 @@ class Freeagent_backup {
             $this->fail('Could not instigate backup');
         }
 
-		if ($this->settings['notify_on_success']) {
+        if ($this->settings['notify_on_success']) {
 
-			$this->send_mail(	'FreeAgent backup script completed',
-								'The FreeAgent backup completed at %s');
-		}
-	}
+         $this->send_mail('FreeAgent backup script completed',
+                          'The FreeAgent backup completed at %s');
+     }
+ }
 
 	// -----------------------------------------------------------------
 
@@ -190,8 +188,8 @@ class Freeagent_backup {
 
 		if ($this->settings['notify_on_failure']) {
 
-			$this->send_mail(	'FreeAgent backup script FAILED',
-								"The FreeAgent backup script failed at %s with the error:\r\n$message");
+			$this->send_mail('FreeAgent backup script FAILED',
+                              "The FreeAgent backup script failed at %s with the error:\r\n$message");
 		}
 
 		throw new Exception($message);
@@ -208,17 +206,17 @@ class Freeagent_backup {
 	private function send_mail($title,$message) {
 
 		$mail_headers = 'From: ' . $this->settings['notify_email'] . "\r\n" .
-						'Reply-To: ' . $this->settings['notify_email'] . "\r\n" .
-						'X-Mailer: PHP/' . phpversion();
+                        'Reply-To: ' . $this->settings['notify_email'] . "\r\n" .
+                        'X-Mailer: PHP/' . phpversion();
 
-		$now = date('Y-m-d H:i:s');
+        $now = date('Y-m-d H:i:s');
 
-		$message = sprintf($message,$now);
+        $message = sprintf($message,$now);
 
-		mail($this->settings['notify_email'],
-					$title,
-					$message,
-					$mail_headers);
-	}
+        mail($this->settings['notify_email'],
+             $title,
+             $message,
+             $mail_headers);
+  }
 
 }
