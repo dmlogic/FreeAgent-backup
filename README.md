@@ -1,8 +1,8 @@
 FreeAgent-backup
 ================
 
-Automatically login to your FreeAgent account and download your data
+Automatically login to your FreeAgent account and instigate a data export.
 
-*NOTE*: since FreeAgent moved to a queue system to export data this script no longer works. It can still be used to instigate a backup and you'll receive a mail when it's ready.
+As of 0.3 this script does not attempt to dowload the generated backup as FreeAgent now operate a delayed file generation process.
 
-At some point I'll write something new to handle the delayed download. Maybe.
+However, their process will email you when the backup is generated which I've found to be sufficient to run a daily backup.

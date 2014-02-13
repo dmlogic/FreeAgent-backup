@@ -9,39 +9,34 @@
  * @author Darren Miller <darren@dmlogic.com>
  * @link http://dmlogic.com
  * @license Licensed under the Open Software License version 3.0
- * @version 0.2
+ * @version 0.3
  *
  * Usage:
  *
-<?php
-
-	require_once('Freeagent_backup.php');
-
-	$settings = array(
-				'url' => 'https://YOURDOMAIN.freeagent.com/',
-				'username' => 'user@example.com',
-				'password' => 'your-password',
-				'notify_email' => 'user@example.com',
-				'notify_on_success' => FALSE,
-				'notify_on_failure' => TRUE,
-				'download_filename' => 'freeagent_backup.xls',
-				'download_folder' => './downloads/',
-				'zip_and_increment_backup' => TRUE
-			);
-
-	$FA = new Freeagent_backup($settings);
-
-	try {
-
-		$FA->download_backup();
-		echo 'Success!';
-
-	} catch(Exception $e) {
-
-		echo 'Error: '.  $e->getMessage();
-	}
-?>
+ *	require_once('Freeagent_backup.php');
  *
+ *	$settings = array(
+ *				'url' => 'https://YOURDOMAIN.freeagent.com/',
+ *				'username' => 'user@example.com',
+ *				'password' => 'your-password',
+ *				'notify_email' => 'user@example.com',
+ *				'notify_on_success' => FALSE,
+ *				'notify_on_failure' => TRUE,
+ *			);
+ *
+ *	$FA = new Freeagent_backup($settings);
+ *
+ *	try {
+ *
+ *		$FA->instigate_backup();
+ *		echo 'Success!';
+ *
+ *	} catch(Exception $e) {
+ *
+ *		echo 'Error: '.  $e->getMessage();
+ *	}
+ *
+  **
  * Be sure to add trailing slashes to all folder paths
  */
 class Freeagent_backup {
@@ -57,9 +52,6 @@ class Freeagent_backup {
 		'notify_email' => 'user@example.com',
 		'notify_on_success' => FALSE,
 		'notify_on_failure' => TRUE,
-		'download_filename' => 'freeagent_backup.xls',
-		'download_folder' => './downloads/',
-		'zip_and_increment_backup' => TRUE
 	);
 
 	// -----------------------------------------------------------------
@@ -112,7 +104,7 @@ class Freeagent_backup {
 	 * Perform the download
 	 *
 	 */
-	public function download_backup() {
+	public function instigate_backup() {
 
 		$this->submit_login_form();
 
@@ -122,32 +114,9 @@ class Freeagent_backup {
 		$file_contents = curl_exec($this->ch);
 		$result = curl_getinfo($this->ch);
 
-		if (FALSE === $file_contents || !strstr($result['content_type'], 'excel')) {
-			$this->fail('Could not download backup file');
-		}
-
-		// zip and increment
-		if ($this->settings['zip_and_increment_backup']) {
-
-			$zip = new ZipArchive();
-
-			$zfilename = $this->settings['download_filename'] . ' - ' . date('Y-m-d H-i-s') . '.zip';
-
-			if ($zip->open($this->settings['download_folder'] . $zfilename, ZIPARCHIVE::CREATE) !== TRUE) {
-				$this->fail('Cannot create ZIP file');
-			}
-
-			$zip->addFromString($this->settings['download_filename'], $file_contents);
-
-			$zip->close();
-
-			// or save the file
-		} else {
-
-			$fso = fopen($this->settings['download_folder'] . $this->settings['download_filename'], 'w+');
-			fwrite($fso, $file_contents);
-			fclose($fso);
-		}
+		if ($result['http_code'] != 302) {
+            $this->fail('Could not instigate backup');
+        }
 
 		if ($this->settings['notify_on_success']) {
 
